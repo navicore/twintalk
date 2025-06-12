@@ -1,0 +1,39 @@
+[package]
+name = "twintalk-api"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "HTTP API server for TwinTalk runtime"
+
+[dependencies]
+twintalk-core = { path = "../twintalk-core" }
+
+# Async runtime
+tokio = { workspace = true }
+async-trait = { workspace = true }
+
+# Web framework
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Observability
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# WebSocket support
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+
+[dev-dependencies]
+reqwest = { version = "0.11", features = ["json"] }
+tower = { version = "0.4", features = ["util"] }

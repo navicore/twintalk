@@ -1,0 +1,34 @@
+[package]
+name = "twintalk-supervisor"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Erlang-style supervisor for twin lifecycle management"
+
+[dependencies]
+twintalk-core = { path = "../twintalk-core" }
+
+# Async runtime
+tokio = { workspace = true }
+async-trait = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# State management
+dashmap = { workspace = true }
+
+# Observability
+tracing = { workspace = true }
+
+# Actor-like patterns
+tokio-util = "0.7"
+futures = "0.3"
+
+# Restart strategies
+backoff = "0.4"
+
+[dev-dependencies]
+tracing-subscriber = { workspace = true }

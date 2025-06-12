@@ -1,0 +1,37 @@
+[workspace]
+members = [
+    "crates/twintalk-core",
+    "crates/twintalk-api", 
+    "crates/twintalk-supervisor",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["navicore"]
+license = "MIT OR Apache-2.0"
+
+[workspace.dependencies]
+# Core runtime
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+anyhow = "1.0"
+thiserror = "1.0"
+
+# State management
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dashmap = "5.5"
+
+# Telemetry
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# For experiments
+nom = "7"
+rhai = "1"
+
+# Testing
+criterion = "0.5"
+proptest = "1.0"
