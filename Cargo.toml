@@ -4,6 +4,9 @@ members = [
     "crates/twintalk-api", 
     "crates/twintalk-supervisor",
 ]
+exclude = [
+    "experiments/*",
+]
 resolver = "2"
 
 [workspace.package]

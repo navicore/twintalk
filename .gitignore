@@ -1,5 +1,7 @@
 # Rust
-/target/
+# Ignore target directories anywhere in the workspace
+target/
+**/target/
 **/*.rs.bk
 Cargo.lock
 

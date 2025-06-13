@@ -1,0 +1,42 @@
+[package]
+name = "smalltalk-integration-test"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "mini-interpreter"
+path = "src/mini_interpreter.rs"
+
+[[bin]]
+name = "rhai-experiment"
+path = "src/rhai_experiment.rs"
+
+[[bin]]
+name = "som-experiment"
+path = "src/som_experiment.rs"
+
+[[bin]]
+name = "minimal-smalltalk"
+path = "src/minimal_smalltalk.rs"
+
+[[bin]]
+name = "twin-inspector"
+path = "src/twin_inspector.rs"
+
+[dependencies]
+# For mini interpreter
+nom = "7"
+
+# Alternative scripting
+rhai = "1"
+
+# SOM (Simple Object Machine) - minimal Smalltalk
+# som-rust = { git = "https://github.com/SOM-st/som-rust.git", optional = true }
+
+# Performance testing
+criterion = "0.5"
+
+[features]
+# som = ["som-rust"]
+
+[workspace]

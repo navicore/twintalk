@@ -7,20 +7,38 @@ license.workspace = true
 description = "Core digital twin runtime engine"
 
 [dependencies]
+# Async runtime
 tokio = { workspace = true }
 async-trait = { workspace = true }
+
+# Error handling
 anyhow = { workspace = true }
 thiserror = { workspace = true }
+
+# Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
+bincode = "1.3"  # For event log serialization
+ordered-float = { version = "4.0", features = ["serde"] }  # For Eq/Hash on floats
+
+# Concurrent state
 dashmap = { workspace = true }
+arc-swap = "1.6"  # For hot-swapping twin definitions
+
+# Event storage (embedded DB)
+sled = "0.34"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# IDs
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Observability
 tracing = { workspace = true }
 
-# Smalltalk DSL parsing
-nom = { workspace = true }
-
-# Alternative scripting engines to evaluate
-rhai = { workspace = true, optional = true }
+# Optional: parsing for complex Smalltalk expressions
+nom = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
@@ -28,8 +46,12 @@ proptest = { workspace = true }
 
 [features]
 default = []
-rhai-backend = ["rhai"]
+complex-parsing = ["nom"]  # Enable for advanced Smalltalk syntax
 
-[[bench]]
-name = "twin_operations"
-harness = false
+# [[bench]]
+# name = "message_dispatch"
+# harness = false
+
+# [[bench]]
+# name = "event_persistence"
+# harness = false

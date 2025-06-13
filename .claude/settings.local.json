@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./target/debug/mini-interpreter)"
+    ],
+    "deny": []
+  }
+}
