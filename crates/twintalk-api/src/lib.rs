@@ -6,14 +6,5 @@
 //! - Query twin state and subscribe to changes
 //! - Execute Smalltalk code on twins
 
-pub mod routes;
-pub mod handlers;
-pub mod websocket;
-pub mod error;
-
-use axum::Router;
-use twintalk_core::Runtime;
-
-pub async fn create_app(runtime: Runtime) -> Router {
-    routes::create_router(runtime)
-}
+// TODO: Implement HTTP API functionality
+// For now, this is a placeholder to allow compilation

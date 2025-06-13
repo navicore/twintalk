@@ -6,11 +6,5 @@
 //! - Resource limits and backpressure
 //! - Twin spawn/despawn orchestration
 
-pub mod supervisor;
-pub mod strategy;
-pub mod child_spec;
-pub mod restart;
-
-pub use supervisor::{Supervisor, SupervisorConfig};
-pub use strategy::RestartStrategy;
-pub use child_spec::ChildSpec;
+// TODO: Implement supervisor functionality
+// For now, this is a placeholder to allow compilation
