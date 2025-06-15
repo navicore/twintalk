@@ -1,7 +1,7 @@
 //! Value type for twin properties and message arguments
 //!
 //! Supports the minimal set needed for digital twins without
-//! full Smalltalk object complexity.
+//! full `Smalltalk` object complexity.
 
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
@@ -45,26 +45,28 @@ impl Value {
     /// Convert to boolean if possible
     pub fn as_bool(&self) -> Option<bool> {
         match self {
-            Value::Boolean(b) => Some(*b),
-            Value::Nil => Some(false),
+            Self::Boolean(b) => Some(*b),
+            Self::Nil => Some(false),
             _ => None,
         }
     }
 
     /// Convert to integer if possible
+    #[allow(clippy::cast_possible_truncation)]
     pub fn as_i64(&self) -> Option<i64> {
         match self {
-            Value::Integer(i) => Some(*i),
-            Value::Float(f) => Some(f.into_inner() as i64),
+            Self::Integer(i) => Some(*i),
+            Self::Float(f) => Some(f.into_inner() as i64),
             _ => None,
         }
     }
 
     /// Convert to float if possible
+    #[allow(clippy::cast_precision_loss)]
     pub fn as_f64(&self) -> Option<f64> {
         match self {
-            Value::Float(f) => Some(f.into_inner()),
-            Value::Integer(i) => Some(*i as f64),
+            Self::Float(f) => Some(f.into_inner()),
+            Self::Integer(i) => Some(*i as f64),
             _ => None,
         }
     }
@@ -72,29 +74,28 @@ impl Value {
     /// Convert to string if possible
     pub fn as_str(&self) -> Option<&str> {
         match self {
-            Value::String(s) => Some(s),
-            Value::Symbol(s) => Some(s),
+            Self::String(s) | Self::Symbol(s) => Some(s),
             _ => None,
         }
     }
 
     /// Check if value is truthy (Smalltalk semantics)
     pub fn is_truthy(&self) -> bool {
-        !matches!(self, Value::Nil | Value::Boolean(false))
+        !matches!(self, Self::Nil | Self::Boolean(false))
     }
 
     /// Type name for inspection
     pub fn type_name(&self) -> &'static str {
         match self {
-            Value::Nil => "Nil",
-            Value::Boolean(_) => "Boolean",
-            Value::Integer(_) => "Integer",
-            Value::Float(_) => "Float",
-            Value::String(_) => "String",
-            Value::Symbol(_) => "Symbol",
-            Value::Array(_) => "Array",
-            Value::Map(_) => "Map",
-            Value::Bytes(_) => "Bytes",
+            Self::Nil => "Nil",
+            Self::Boolean(_) => "Boolean",
+            Self::Integer(_) => "Integer",
+            Self::Float(_) => "Float",
+            Self::String(_) => "String",
+            Self::Symbol(_) => "Symbol",
+            Self::Array(_) => "Array",
+            Self::Map(_) => "Map",
+            Self::Bytes(_) => "Bytes",
         }
     }
 }
@@ -102,33 +103,33 @@ impl Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Nil => write!(f, "nil"),
-            Value::Boolean(b) => write!(f, "{}", b),
-            Value::Integer(i) => write!(f, "{}", i),
-            Value::Float(fl) => write!(f, "{}", fl),
-            Value::String(s) => write!(f, "{}", s),
-            Value::Symbol(s) => write!(f, "#{}", s),
-            Value::Array(arr) => {
+            Self::Nil => write!(f, "nil"),
+            Self::Boolean(b) => write!(f, "{b}"),
+            Self::Integer(i) => write!(f, "{i}"),
+            Self::Float(fl) => write!(f, "{fl}"),
+            Self::String(s) => write!(f, "{s}"),
+            Self::Symbol(s) => write!(f, "#{s}"),
+            Self::Array(arr) => {
                 write!(f, "[")?;
                 for (i, v) in arr.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}", v)?;
+                    write!(f, "{v}")?;
                 }
                 write!(f, "]")
             }
-            Value::Map(map) => {
+            Self::Map(map) => {
                 write!(f, "{{")?;
                 for (i, (k, v)) in map.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}: {}", k, v)?;
+                    write!(f, "{k}: {v}")?;
                 }
                 write!(f, "}}")
             }
-            Value::Bytes(b) => write!(f, "<{} bytes>", b.len()),
+            Self::Bytes(b) => write!(f, "<{} bytes>", b.len()),
         }
     }
 }
@@ -136,49 +137,49 @@ impl fmt::Display for Value {
 // Conversions from Rust types
 impl From<bool> for Value {
     fn from(b: bool) -> Self {
-        Value::Boolean(b)
+        Self::Boolean(b)
     }
 }
 
 impl From<i32> for Value {
     fn from(i: i32) -> Self {
-        Value::Integer(i as i64)
+        Self::Integer(i64::from(i))
     }
 }
 
 impl From<i64> for Value {
     fn from(i: i64) -> Self {
-        Value::Integer(i)
+        Self::Integer(i)
     }
 }
 
 impl From<f32> for Value {
     fn from(f: f32) -> Self {
-        Value::Float(OrderedFloat(f as f64))
+        Self::Float(OrderedFloat(f64::from(f)))
     }
 }
 
 impl From<f64> for Value {
     fn from(f: f64) -> Self {
-        Value::Float(OrderedFloat(f))
+        Self::Float(OrderedFloat(f))
     }
 }
 
 impl From<String> for Value {
     fn from(s: String) -> Self {
-        Value::String(s)
+        Self::String(s)
     }
 }
 
 impl From<&str> for Value {
     fn from(s: &str) -> Self {
-        Value::String(s.to_string())
+        Self::String(s.to_string())
     }
 }
 
-impl<T: Into<Value>> From<Vec<T>> for Value {
+impl<T: Into<Self>> From<Vec<T>> for Value {
     fn from(vec: Vec<T>) -> Self {
-        Value::Array(vec.into_iter().map(Into::into).collect())
+        Self::Array(vec.into_iter().map(Into::into).collect())
     }
 }
 

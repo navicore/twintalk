@@ -4,6 +4,7 @@
 
 use crate::message::Message;
 use crate::value::Value;
+use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -86,6 +87,7 @@ impl Twin {
     }
 
     /// Clone this twin (prototype-based)
+    #[must_use]
     pub fn clone_twin(&self) -> Self {
         let mut new_state = self.state.clone();
         new_state.id = TwinId::new();
@@ -97,7 +99,7 @@ impl Twin {
     }
 
     /// Send a message to this twin
-    pub fn send(&mut self, message: &Message) -> Result<Value, String> {
+    pub fn send(&mut self, message: &Message) -> Result<Value> {
         self.state.updated_at = Utc::now();
 
         match message {
@@ -131,18 +133,18 @@ impl Twin {
             Message::GetAllProperties => Ok(Value::Map(self.state.properties.clone())),
 
             Message::RespondsTo(selector) => {
-                let responds = self.responds_to_builtin(selector);
+                let responds = Self::responds_to_builtin(selector);
                 Ok(Value::Boolean(responds))
             }
 
             Message::Send { selector, args } => self.handle_custom_message(selector, args),
 
-            _ => Err(format!("Unhandled message: {:?}", message)),
+            _ => Err(anyhow!("Unhandled message: {message:?}")),
         }
     }
 
     /// Update from telemetry data
-    pub fn update_telemetry(&mut self, data: BTreeMap<String, f64>) -> Result<(), String> {
+    pub fn update_telemetry(&mut self, data: BTreeMap<String, f64>) -> Result<()> {
         let updates: Vec<(String, Value)> = data
             .into_iter()
             .map(|(k, v)| (k, Value::Float(v.into())))
@@ -153,7 +155,7 @@ impl Twin {
     }
 
     /// Check if twin responds to built-in messages
-    fn responds_to_builtin(&self, selector: &str) -> bool {
+    fn responds_to_builtin(selector: &str) -> bool {
         matches!(
             selector,
             "class" | "allProperties" | "clone" | "respondsTo:" | "checkAlert"
@@ -161,20 +163,20 @@ impl Twin {
     }
 
     /// Handle custom messages
-    fn handle_custom_message(&mut self, selector: &str, _args: &[Value]) -> Result<Value, String> {
+    fn handle_custom_message(&mut self, selector: &str, _args: &[Value]) -> Result<Value> {
         match selector {
             "checkAlert" => {
                 let temp = self
                     .state
                     .properties
                     .get("temperature")
-                    .and_then(|v| v.as_f64())
+                    .and_then(Value::as_f64)
                     .unwrap_or(0.0);
                 let threshold = self
                     .state
                     .properties
                     .get("threshold")
-                    .and_then(|v| v.as_f64())
+                    .and_then(Value::as_f64)
                     .unwrap_or(30.0);
 
                 let alert = temp > threshold;
@@ -183,7 +185,7 @@ impl Twin {
                     .insert("alert".to_string(), Value::Boolean(alert));
                 Ok(Value::Boolean(alert))
             }
-            _ => Err(format!("Twin does not understand: {}", selector)),
+            _ => Err(anyhow!("Twin does not understand: {selector}")),
         }
     }
 }

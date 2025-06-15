@@ -98,7 +98,7 @@ impl Twin for TemperatureSensor {
                 self.alert_state = false;
                 Ok(Box::new(()))
             }
-            _ => Err(format!("Unknown message: {}", selector)),
+            _ => Err(format!("Unknown message: {selector}")),
         }
     }
     
@@ -191,7 +191,7 @@ fn main() {
     for i in 0..10000 {
         let mut sensor = registry.create_from(
             "TemperatureSensor",
-            format!("perf_sensor_{}", i),
+            format!("perf_sensor_{i}"),
             HashMap::new()
         ).unwrap();
         

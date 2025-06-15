@@ -13,16 +13,16 @@ async fn test_memory_event_store() {
     let twin_id = TwinId::new();
 
     // Append events
-    let event1 = TwinEvent::Created {
+    let created_event = TwinEvent::Created {
         twin_id,
         class_name: "Sensor".to_string(),
         timestamp: Utc::now(),
     };
 
-    let version1 = store.append(event1).await.unwrap();
+    let version1 = store.append(created_event).await.unwrap();
     assert_eq!(version1, 1);
 
-    let event2 = TwinEvent::PropertyChanged {
+    let property_event = TwinEvent::PropertyChanged {
         twin_id,
         property: "temperature".to_string(),
         old_value: None,
@@ -30,7 +30,7 @@ async fn test_memory_event_store() {
         timestamp: Utc::now(),
     };
 
-    let version2 = store.append(event2).await.unwrap();
+    let version2 = store.append(property_event).await.unwrap();
     assert_eq!(version2, 2);
 
     // Get events for twin
@@ -84,7 +84,7 @@ async fn test_event_time_range() {
     for i in 0..5 {
         let event = TwinEvent::Created {
             twin_id: TwinId::new(),
-            class_name: format!("Sensor{}", i),
+            class_name: format!("Sensor{i}"),
             timestamp: start_time + Duration::seconds(i),
         };
         store.append(event).await.unwrap();
@@ -146,7 +146,7 @@ async fn test_snapshot_cleanup() {
             properties: BTreeMap::new(),
             parent_id: None,
             event_version: i,
-            timestamp: now - Duration::days(10 - i as i64), // Older snapshots have older timestamps
+            timestamp: now - Duration::days(10_i64.saturating_sub(i64::try_from(i).unwrap_or(0))), // Older snapshots have older timestamps
         };
         store.save_snapshot(snapshot).await.unwrap();
     }

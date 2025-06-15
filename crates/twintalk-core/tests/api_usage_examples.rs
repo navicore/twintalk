@@ -1,6 +1,6 @@
 //! API usage examples that serve as both documentation and regression tests
 //!
-//! These tests demonstrate common patterns for using the TwinTalk core API.
+//! These tests demonstrate common patterns for using the `TwinTalk` core API.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -40,9 +40,10 @@ async fn example_iot_sensor() {
 
     // Query final state
     let active = runtime.get_twin(sensor_id).await.unwrap();
-    let mut twin = active.twin.write().await;
-
-    let temp = twin.send(&msg!(temperature)).unwrap();
+    let temp = {
+        let mut twin = active.twin.write().await;
+        twin.send(&msg!(temperature)).unwrap()
+    };
     assert_eq!(temp, Value::from(24.0));
 }
 
@@ -140,8 +141,8 @@ async fn example_event_sourcing() {
             .update_telemetry(
                 device_id,
                 vec![
-                    ("hour".to_string(), hour as f64),
-                    ("consumption".to_string(), 1.5 + (hour as f64 * 0.1)),
+                    ("hour".to_string(), f64::from(hour)),
+                    ("consumption".to_string(), f64::from(hour).mul_add(0.1, 1.5)),
                 ],
             )
             .await
@@ -153,12 +154,18 @@ async fn example_event_sourcing() {
 
     // Twin should be reloaded from events
     let active = runtime.get_twin(device_id).await.unwrap();
-    let mut twin = active.twin.write().await;
 
     // Should have last reading
-    assert_eq!(twin.send(&msg!(hour)).unwrap(), Value::from(23.0));
+    let (hour_val, consumption) = {
+        let mut twin = active.twin.write().await;
+        let hour = twin.send(&msg!(hour)).unwrap();
+        let cons = twin.send(&msg!(consumption)).unwrap();
+        drop(twin); // Explicitly drop the lock
+        (hour, cons)
+    };
+
+    assert_eq!(hour_val, Value::from(23.0));
     // Use approximate comparison for floats due to precision
-    let consumption = twin.send(&msg!(consumption)).unwrap();
     if let Value::Float(f) = consumption {
         assert!((f.into_inner() - 3.8).abs() < 0.0001);
     } else {
@@ -215,13 +222,14 @@ async fn example_twin_metadata() {
     ];
 
     for (id, active) in twins {
-        let mut twin = active.twin.write().await;
-        let class = twin.send(&msg!(class)).unwrap();
+        let class = {
+            let mut twin = active.twin.write().await;
+            twin.send(&msg!(class)).unwrap()
+        };
 
         match class.as_str() {
             Some("TemperatureSensor") => {
                 // Configure sensor-specific properties
-                drop(twin);
                 runtime
                     .update_telemetry(id, vec![("sample_rate".to_string(), 1.0)])
                     .await
@@ -229,7 +237,6 @@ async fn example_twin_metadata() {
             }
             Some("HeaterActuator") => {
                 // Configure actuator-specific properties
-                drop(twin);
                 runtime
                     .update_telemetry(id, vec![("max_power".to_string(), 2000.0)])
                     .await

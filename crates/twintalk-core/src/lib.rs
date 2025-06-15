@@ -1,10 +1,12 @@
-//! TwinTalk Core Runtime
+//! `TwinTalk` Core Runtime
 //!
 //! This crate provides the core digital twin execution engine with:
 //! - Twin instance management and prototype-based cloning
-//! - Smalltalk-inspired message passing
+//! - `Smalltalk`-inspired message passing
 //! - Telemetry ingestion and state updates
 //! - Event sourcing for persistence
+
+#![allow(clippy::multiple_crate_versions)]
 
 pub mod event;
 pub mod message;

@@ -4,6 +4,7 @@
 
 use crate::twin::TwinId;
 use crate::value::Value;
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -62,24 +63,24 @@ impl TwinEvent {
     /// Get the twin ID this event applies to
     pub fn twin_id(&self) -> TwinId {
         match self {
-            TwinEvent::Created { twin_id, .. } => *twin_id,
-            TwinEvent::PropertyChanged { twin_id, .. } => *twin_id,
-            TwinEvent::TelemetryReceived { twin_id, .. } => *twin_id,
-            TwinEvent::MessageSent { twin_id, .. } => *twin_id,
-            TwinEvent::Cloned { twin_id, .. } => *twin_id,
-            TwinEvent::Destroyed { twin_id, .. } => *twin_id,
+            Self::Created { twin_id, .. }
+            | Self::PropertyChanged { twin_id, .. }
+            | Self::TelemetryReceived { twin_id, .. }
+            | Self::MessageSent { twin_id, .. }
+            | Self::Cloned { twin_id, .. }
+            | Self::Destroyed { twin_id, .. } => *twin_id,
         }
     }
 
     /// Get the timestamp of this event
     pub fn timestamp(&self) -> DateTime<Utc> {
         match self {
-            TwinEvent::Created { timestamp, .. } => *timestamp,
-            TwinEvent::PropertyChanged { timestamp, .. } => *timestamp,
-            TwinEvent::TelemetryReceived { timestamp, .. } => *timestamp,
-            TwinEvent::MessageSent { timestamp, .. } => *timestamp,
-            TwinEvent::Cloned { timestamp, .. } => *timestamp,
-            TwinEvent::Destroyed { timestamp, .. } => *timestamp,
+            Self::Created { timestamp, .. }
+            | Self::PropertyChanged { timestamp, .. }
+            | Self::TelemetryReceived { timestamp, .. }
+            | Self::MessageSent { timestamp, .. }
+            | Self::Cloned { timestamp, .. }
+            | Self::Destroyed { timestamp, .. } => *timestamp,
         }
     }
 }
@@ -87,14 +88,14 @@ impl TwinEvent {
 impl fmt::Display for TwinEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TwinEvent::Created {
+            Self::Created {
                 twin_id,
                 class_name,
                 timestamp,
             } => {
-                write!(f, "[{}] Created {} ({})", timestamp, twin_id, class_name)
+                write!(f, "[{timestamp}] Created {twin_id} ({class_name})")
             }
-            TwinEvent::PropertyChanged {
+            Self::PropertyChanged {
                 twin_id,
                 property,
                 new_value,
@@ -103,44 +104,37 @@ impl fmt::Display for TwinEvent {
             } => {
                 write!(
                     f,
-                    "[{}] {} property '{}' = {}",
-                    timestamp, twin_id, property, new_value
+                    "[{timestamp}] {twin_id} property '{property}' = {new_value}"
                 )
             }
-            TwinEvent::TelemetryReceived {
+            Self::TelemetryReceived {
                 twin_id,
                 data,
                 timestamp,
             } => {
                 write!(
                     f,
-                    "[{}] {} received {} telemetry values",
-                    timestamp,
-                    twin_id,
+                    "[{timestamp}] {twin_id} received {} telemetry values",
                     data.len()
                 )
             }
-            TwinEvent::MessageSent {
+            Self::MessageSent {
                 twin_id,
                 selector,
                 timestamp,
                 ..
             } => {
-                write!(
-                    f,
-                    "[{}] {} received message '{}'",
-                    timestamp, twin_id, selector
-                )
+                write!(f, "[{timestamp}] {twin_id} received message '{selector}'")
             }
-            TwinEvent::Cloned {
+            Self::Cloned {
                 twin_id,
                 source_id,
                 timestamp,
             } => {
-                write!(f, "[{}] {} cloned from {}", timestamp, twin_id, source_id)
+                write!(f, "[{timestamp}] {twin_id} cloned from {source_id})")
             }
-            TwinEvent::Destroyed { twin_id, timestamp } => {
-                write!(f, "[{}] {} destroyed", timestamp, twin_id)
+            Self::Destroyed { twin_id, timestamp } => {
+                write!(f, "[{timestamp}] {twin_id} destroyed")
             }
         }
     }
@@ -150,24 +144,24 @@ impl fmt::Display for TwinEvent {
 #[async_trait::async_trait]
 pub trait EventStore: Send + Sync {
     /// Append an event to the store
-    async fn append(&self, event: TwinEvent) -> Result<u64, String>;
+    async fn append(&self, event: TwinEvent) -> Result<u64>;
 
     /// Get all events for a twin after a certain version
     async fn get_events(
         &self,
         twin_id: TwinId,
         after_version: u64,
-    ) -> Result<Vec<(u64, TwinEvent)>, String>;
+    ) -> Result<Vec<(u64, TwinEvent)>>;
 
     /// Get all events in a time range
     async fn get_events_in_range(
         &self,
         start: DateTime<Utc>,
         end: DateTime<Utc>,
-    ) -> Result<Vec<(u64, TwinEvent)>, String>;
+    ) -> Result<Vec<(u64, TwinEvent)>>;
 
     /// Get the latest version number
-    async fn get_latest_version(&self) -> Result<u64, String>;
+    async fn get_latest_version(&self) -> Result<u64>;
 }
 
 /// Snapshot for faster twin reconstruction
@@ -185,11 +179,11 @@ pub struct TwinSnapshot {
 #[async_trait::async_trait]
 pub trait SnapshotStore: Send + Sync {
     /// Save a snapshot
-    async fn save_snapshot(&self, snapshot: TwinSnapshot) -> Result<(), String>;
+    async fn save_snapshot(&self, snapshot: TwinSnapshot) -> Result<()>;
 
     /// Get the latest snapshot for a twin
-    async fn get_snapshot(&self, twin_id: TwinId) -> Result<Option<TwinSnapshot>, String>;
+    async fn get_snapshot(&self, twin_id: TwinId) -> Result<Option<TwinSnapshot>>;
 
     /// Delete old snapshots
-    async fn cleanup_old_snapshots(&self, before: DateTime<Utc>) -> Result<u64, String>;
+    async fn cleanup_old_snapshots(&self, before: DateTime<Utc>) -> Result<u64>;
 }

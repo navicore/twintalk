@@ -25,10 +25,12 @@ async fn test_twin_lifecycle() {
 
     // Get twin and verify state
     let active = runtime.get_twin(twin_id).await.unwrap();
-    let mut twin = active.twin.write().await;
-
-    assert_eq!(twin.send(&msg!(temperature)).unwrap(), Value::from(25.0));
-    assert_eq!(twin.send(&msg!(threshold)).unwrap(), Value::from(30.0));
+    {
+        let mut twin = active.twin.write().await;
+        assert_eq!(twin.send(&msg!(temperature)).unwrap(), Value::from(25.0));
+        assert_eq!(twin.send(&msg!(threshold)).unwrap(), Value::from(30.0));
+        drop(twin); // Explicitly drop the lock
+    }
 }
 
 #[tokio::test]
@@ -65,11 +67,13 @@ async fn test_lazy_loading() {
 
     // Twin should be lazily loaded when accessed
     let active = runtime.get_twin(twin_id).await.unwrap();
-    let mut twin = active.twin.write().await;
-    assert_eq!(twin.send(&msg!(value)).unwrap(), Value::from(42.0));
+    {
+        let mut twin = active.twin.write().await;
+        assert_eq!(twin.send(&msg!(value)).unwrap(), Value::from(42.0));
+        drop(twin); // Explicitly drop the lock
+    }
 
     // Stats should show 1 active twin again
-    drop(twin);
     let stats = runtime.stats().await;
     assert_eq!(stats.active_twins, 1);
 }
@@ -84,18 +88,20 @@ async fn test_event_sourcing() {
     // Send multiple telemetry updates
     for i in 0..5 {
         runtime
-            .update_telemetry(twin_id, vec![("counter".to_string(), i as f64)])
+            .update_telemetry(twin_id, vec![("counter".to_string(), f64::from(i))])
             .await
             .unwrap();
     }
 
     // Get final state
     let active = runtime.get_twin(twin_id).await.unwrap();
-    let mut twin = active.twin.write().await;
-    assert_eq!(twin.send(&msg!(counter)).unwrap(), Value::from(4.0));
+    {
+        let mut twin = active.twin.write().await;
+        assert_eq!(twin.send(&msg!(counter)).unwrap(), Value::from(4.0));
+        drop(twin); // Explicitly drop the lock
+    }
 
     // Stats should show events
-    drop(twin);
     let stats = runtime.stats().await;
     assert_eq!(stats.total_events, 6); // 1 create + 5 telemetry
 }
@@ -133,8 +139,11 @@ async fn test_twin_not_loaded_on_telemetry() {
 
     // When we access it, it should have the telemetry
     let active = runtime.get_twin(twin_id).await.unwrap();
-    let mut twin = active.twin.write().await;
-    assert_eq!(twin.send(&msg!(value)).unwrap(), Value::from(100.0));
+    {
+        let mut twin = active.twin.write().await;
+        assert_eq!(twin.send(&msg!(value)).unwrap(), Value::from(100.0));
+        drop(twin); // Explicitly drop the lock
+    }
 }
 
 #[tokio::test]
@@ -168,13 +177,15 @@ async fn test_snapshot_and_restore() {
     runtime.evict_inactive().await.unwrap();
 
     let active = runtime.get_twin(twin_id).await.unwrap();
-    let mut twin = active.twin.write().await;
-
-    // Should have all properties
-    assert_eq!(twin.send(&msg!(a)).unwrap(), Value::from(1.0));
-    assert_eq!(twin.send(&msg!(b)).unwrap(), Value::from(2.0));
-    assert_eq!(twin.send(&msg!(c)).unwrap(), Value::from(3.0));
-    assert_eq!(twin.send(&msg!(d)).unwrap(), Value::from(4.0));
+    {
+        let mut twin = active.twin.write().await;
+        // Should have all properties
+        assert_eq!(twin.send(&msg!(a)).unwrap(), Value::from(1.0));
+        assert_eq!(twin.send(&msg!(b)).unwrap(), Value::from(2.0));
+        assert_eq!(twin.send(&msg!(c)).unwrap(), Value::from(3.0));
+        assert_eq!(twin.send(&msg!(d)).unwrap(), Value::from(4.0));
+        drop(twin); // Explicitly drop the lock
+    }
 }
 
 #[tokio::test]
@@ -190,7 +201,7 @@ async fn test_concurrent_access() {
         let id = twin_id;
 
         let handle = tokio::spawn(async move {
-            rt.update_telemetry(id, vec![(format!("value_{}", i), i as f64)])
+            rt.update_telemetry(id, vec![(format!("value_{i}"), f64::from(i))])
                 .await
                 .unwrap();
         });
@@ -205,13 +216,15 @@ async fn test_concurrent_access() {
 
     // Verify all updates were applied
     let active = runtime.get_twin(twin_id).await.unwrap();
-    let mut twin = active.twin.write().await;
-
-    for i in 0..10 {
-        let value = twin
-            .send(&Message::GetProperty(format!("value_{}", i)))
-            .unwrap();
-        assert_eq!(value, Value::from(i as f64));
+    {
+        let mut twin = active.twin.write().await;
+        for i in 0..10 {
+            let value = twin
+                .send(&Message::GetProperty(format!("value_{i}")))
+                .unwrap();
+            assert_eq!(value, Value::from(f64::from(i)));
+        }
+        drop(twin); // Explicitly drop the lock
     }
 }
 

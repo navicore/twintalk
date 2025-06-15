@@ -6,6 +6,7 @@ use crate::event::{EventStore, SnapshotStore, TwinEvent, TwinSnapshot};
 use crate::storage::memory_store::MemoryEventStore;
 use crate::twin::{Twin, TwinId, TwinState};
 use crate::value::Value;
+use anyhow::{anyhow, Result};
 use chrono::Utc;
 use dashmap::DashMap;
 use std::sync::Arc;
@@ -93,7 +94,7 @@ impl Runtime {
     }
 
     /// Create a new twin
-    pub async fn create_twin(&self, class_name: impl Into<String>) -> Result<TwinId, String> {
+    pub async fn create_twin(&self, class_name: impl Into<String>) -> Result<TwinId> {
         let twin = Twin::new(class_name.into());
         let twin_id = twin.id();
 
@@ -113,7 +114,7 @@ impl Runtime {
     }
 
     /// Get or load a twin
-    pub async fn get_twin(&self, twin_id: TwinId) -> Result<Arc<ActiveTwin>, String> {
+    pub async fn get_twin(&self, twin_id: TwinId) -> Result<Arc<ActiveTwin>> {
         // Check if already active
         if let Some(twin) = self.active_twins.get(&twin_id) {
             twin.touch().await;
@@ -125,7 +126,7 @@ impl Runtime {
     }
 
     /// Load a twin from events/snapshots
-    async fn load_twin(&self, twin_id: TwinId) -> Result<Arc<ActiveTwin>, String> {
+    async fn load_twin(&self, twin_id: TwinId) -> Result<Arc<ActiveTwin>> {
         // Try to load from snapshot first
         let (state, start_version) =
             if let Some(snapshot) = self.snapshot_store.get_snapshot(twin_id).await? {
@@ -146,7 +147,7 @@ impl Runtime {
         let events = self.event_store.get_events(twin_id, start_version).await?;
 
         if events.is_empty() && state.is_none() {
-            return Err(format!("Twin {} not found", twin_id));
+            return Err(anyhow!("Twin {twin_id} not found"));
         }
 
         // Create twin from first event if no snapshot
@@ -156,15 +157,15 @@ impl Runtime {
         } else if let Some((_, first_event)) = events.first() {
             match first_event {
                 TwinEvent::Created { class_name, .. } => Twin::new(class_name.clone()),
-                _ => return Err("First event must be Created".to_string()),
+                _ => return Err(anyhow!("First event must be Created")),
             }
         } else {
-            return Err("No state or events found".to_string());
+            return Err(anyhow!("No state or events found"));
         };
 
         // Replay remaining events
-        for (_, event) in events.iter().skip(if had_snapshot { 0 } else { 1 }) {
-            self.apply_event(&mut twin, event)?;
+        for (_, event) in events.iter().skip(usize::from(!had_snapshot)) {
+            Self::apply_event(&mut twin, event)?;
         }
 
         let active = Arc::new(ActiveTwin::new(twin));
@@ -174,7 +175,7 @@ impl Runtime {
     }
 
     /// Apply an event to a twin
-    fn apply_event(&self, twin: &mut Twin, event: &TwinEvent) -> Result<(), String> {
+    fn apply_event(twin: &mut Twin, event: &TwinEvent) -> Result<()> {
         match event {
             TwinEvent::PropertyChanged {
                 property,
@@ -199,11 +200,7 @@ impl Runtime {
     }
 
     /// Update twin with telemetry
-    pub async fn update_telemetry(
-        &self,
-        twin_id: TwinId,
-        data: Vec<(String, f64)>,
-    ) -> Result<(), String> {
+    pub async fn update_telemetry(&self, twin_id: TwinId, data: Vec<(String, f64)>) -> Result<()> {
         // Record event first (for durability)
         let event = TwinEvent::TelemetryReceived {
             twin_id,
@@ -228,18 +225,26 @@ impl Runtime {
     }
 
     /// Create a snapshot for a twin
-    pub async fn snapshot_twin(&self, twin_id: TwinId) -> Result<(), String> {
+    pub async fn snapshot_twin(&self, twin_id: TwinId) -> Result<()> {
         let active = self.get_twin(twin_id).await?;
-        let twin = active.twin.read().await;
-        let state = twin.state();
+
+        let (class_name, properties, parent_id) = {
+            let twin = active.twin.read().await;
+            let state = twin.state();
+            let class_name = state.class_name.clone();
+            let properties = state.properties.clone();
+            let parent_id = state.parent_id;
+            drop(twin); // Explicitly drop the lock before the tuple is created
+            (class_name, properties, parent_id)
+        };
 
         let version = self.event_store.get_latest_version().await?;
 
         let snapshot = TwinSnapshot {
             twin_id,
-            class_name: state.class_name.clone(),
-            properties: state.properties.clone(),
-            parent_id: state.parent_id,
+            class_name,
+            properties,
+            parent_id,
             event_version: version,
             timestamp: Utc::now(),
         };
@@ -249,7 +254,7 @@ impl Runtime {
     }
 
     /// Evict inactive twins from memory
-    pub async fn evict_inactive(&self) -> Result<usize, String> {
+    pub async fn evict_inactive(&self) -> Result<usize> {
         let now = Instant::now();
         let mut to_evict = Vec::new();
 
@@ -322,8 +327,10 @@ mod tests {
 
         // Get twin and verify
         let active = runtime.get_twin(twin_id).await.unwrap();
-        let mut twin = active.twin.write().await;
-        let temp = twin.send(&crate::msg!(temperature)).unwrap();
+        let temp = {
+            let mut twin = active.twin.write().await;
+            twin.send(&crate::msg!(temperature)).unwrap()
+        };
         assert_eq!(temp, Value::from(25.0));
     }
 }
