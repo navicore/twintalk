@@ -36,7 +36,7 @@ impl TwinInspector {
         // Create some test twins
         for i in 0..5 {
             let mut twin = Twin {
-                id: format!("sensor_{}", i),
+                id: format!("sensor_{i}"),
                 class_name: "TemperatureSensor".to_string(),
                 properties: HashMap::new(),
             };
@@ -77,7 +77,7 @@ impl TwinInspector {
                     result.push_str("Properties:\n");
                     
                     for (key, value) in &twin.properties {
-                        result.push_str(&format!("  {}: {:?}\n", key, value));
+                        result.push_str(&format!("  {key}: {value:?}\n"));
                     }
                     Ok(result)
                 } else {
@@ -93,7 +93,7 @@ impl TwinInspector {
                 
                 if let Some(twin) = self.twins.get(parts[1]) {
                     if let Some(value) = twin.properties.get(parts[2]) {
-                        Ok(format!("{:?}", value))
+                        Ok(format!("{value:?}"))
                     } else {
                         Err(format!("Property '{}' not found", parts[2]))
                     }
@@ -147,7 +147,7 @@ impl TwinInspector {
                         };
                         
                         if matches {
-                            results.push(format!("{}: {}", id, val));
+                            results.push(format!("{id}: {val}"));
                         }
                     }
                 }

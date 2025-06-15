@@ -2,6 +2,7 @@
 
 use crate::event::{EventStore, SnapshotStore, TwinEvent, TwinSnapshot};
 use crate::twin::TwinId;
+use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
@@ -37,7 +38,7 @@ impl Default for MemoryEventStore {
 
 #[async_trait]
 impl EventStore for MemoryEventStore {
-    async fn append(&self, event: TwinEvent) -> Result<u64, String> {
+    async fn append(&self, event: TwinEvent) -> Result<u64> {
         let version = self.version_counter.fetch_add(1, Ordering::SeqCst) + 1;
         let twin_id = event.twin_id();
 
@@ -52,7 +53,7 @@ impl EventStore for MemoryEventStore {
         &self,
         twin_id: TwinId,
         after_version: u64,
-    ) -> Result<Vec<(u64, TwinEvent)>, String> {
+    ) -> Result<Vec<(u64, TwinEvent)>> {
         let versions = self
             .twin_events
             .get(&twin_id)
@@ -76,7 +77,7 @@ impl EventStore for MemoryEventStore {
         &self,
         start: DateTime<Utc>,
         end: DateTime<Utc>,
-    ) -> Result<Vec<(u64, TwinEvent)>, String> {
+    ) -> Result<Vec<(u64, TwinEvent)>> {
         let mut events = Vec::new();
 
         for entry in self.events.iter() {
@@ -93,23 +94,23 @@ impl EventStore for MemoryEventStore {
         Ok(events)
     }
 
-    async fn get_latest_version(&self) -> Result<u64, String> {
+    async fn get_latest_version(&self) -> Result<u64> {
         Ok(self.version_counter.load(Ordering::SeqCst))
     }
 }
 
 #[async_trait]
 impl SnapshotStore for MemoryEventStore {
-    async fn save_snapshot(&self, snapshot: TwinSnapshot) -> Result<(), String> {
+    async fn save_snapshot(&self, snapshot: TwinSnapshot) -> Result<()> {
         self.snapshots.insert(snapshot.twin_id, snapshot);
         Ok(())
     }
 
-    async fn get_snapshot(&self, twin_id: TwinId) -> Result<Option<TwinSnapshot>, String> {
+    async fn get_snapshot(&self, twin_id: TwinId) -> Result<Option<TwinSnapshot>> {
         Ok(self.snapshots.get(&twin_id).map(|s| s.clone()))
     }
 
-    async fn cleanup_old_snapshots(&self, before: DateTime<Utc>) -> Result<u64, String> {
+    async fn cleanup_old_snapshots(&self, before: DateTime<Utc>) -> Result<u64> {
         let mut count = 0;
         let mut to_remove = Vec::new();
 

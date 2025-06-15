@@ -151,5 +151,8 @@ fn test_error_handling() {
     });
 
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("does not understand"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("does not understand"));
 }

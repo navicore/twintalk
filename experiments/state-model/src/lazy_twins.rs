@@ -228,7 +228,7 @@ async fn main() {
         
         // Create twin IDs
         let twin_ids: Vec<_> = (0..1000)
-            .map(|i| TwinId(format!("sensor_{}", i)))
+            .map(|i| TwinId(format!("sensor_{i}")))
             .collect();
 
         // Process telemetry for subset
