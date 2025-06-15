@@ -32,7 +32,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 
 # For experiments
-nom = "7"
+nom = "8"
 rhai = "1"
 
 # Testing
