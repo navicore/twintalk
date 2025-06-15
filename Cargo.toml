@@ -40,5 +40,5 @@ nom = "8"
 rhai = "1"
 
 # Testing
-criterion = "0.5"
+criterion = "0.6"
 proptest = "1.0"
