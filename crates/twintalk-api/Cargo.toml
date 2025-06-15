@@ -31,7 +31,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 # WebSocket support
-tokio-tungstenite = "0.21"
+tokio-tungstenite = "0.27"
 futures-util = "0.3"
 
 [dev-dependencies]
