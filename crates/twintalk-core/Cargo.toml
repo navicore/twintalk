@@ -22,7 +22,7 @@ thiserror = { workspace = true }
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
-bincode = "2.0"  # For event log serialization
+bincode = { version = "2.0", features = ["serde"] }  # For event log serialization
 ordered-float = { version = "5.0", features = ["serde"] }  # For Eq/Hash on floats
 
 # Concurrent state

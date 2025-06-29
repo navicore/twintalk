@@ -54,14 +54,17 @@ impl SledEventStore {
         // Get existing versions for this twin
         let mut versions =
             if let Some(data) = self.twin_events.get(twin_key).map_err(|e| anyhow!(e))? {
-                bincode::deserialize::<Vec<u64>>(&data).map_err(|e| anyhow!(e))?
+                bincode::serde::decode_from_slice::<Vec<u64>, _>(&data, bincode::config::standard())
+                    .map(|(decoded, _)| decoded)
+                    .map_err(|e| anyhow!(e))?
             } else {
                 Vec::new()
             };
 
         versions.push(version);
 
-        let encoded = bincode::serialize(&versions).map_err(|e| anyhow!(e))?;
+        let encoded = bincode::serde::encode_to_vec(&versions, bincode::config::standard())
+            .map_err(|e| anyhow!(e))?;
         self.twin_events
             .insert(twin_key, encoded)
             .map_err(|e| anyhow!(e))?;
@@ -76,7 +79,8 @@ impl EventStore for SledEventStore {
         let version = self.version_counter.fetch_add(1, Ordering::SeqCst) + 1;
         let version_bytes = version.to_be_bytes();
 
-        let encoded = bincode::serialize(&event).map_err(|e| anyhow!(e))?;
+        let encoded = bincode::serde::encode_to_vec(&event, bincode::config::standard())
+            .map_err(|e| anyhow!(e))?;
 
         self.events
             .insert(version_bytes, encoded)
@@ -100,7 +104,9 @@ impl EventStore for SledEventStore {
 
         // Get all versions for this twin
         let versions = if let Some(data) = self.twin_events.get(twin_key).map_err(|e| anyhow!(e))? {
-            bincode::deserialize::<Vec<u64>>(&data).map_err(|e| anyhow!(e))?
+            bincode::serde::decode_from_slice::<Vec<u64>, _>(&data, bincode::config::standard())
+                .map(|(decoded, _)| decoded)
+                .map_err(|e| anyhow!(e))?
         } else {
             return Ok(vec![]);
         };
@@ -111,7 +117,10 @@ impl EventStore for SledEventStore {
             if version > after_version {
                 let version_bytes = version.to_be_bytes();
                 if let Some(data) = self.events.get(version_bytes).map_err(|e| anyhow!(e))? {
-                    let event: TwinEvent = bincode::deserialize(&data).map_err(|e| anyhow!(e))?;
+                    let event: TwinEvent =
+                        bincode::serde::decode_from_slice(&data, bincode::config::standard())
+                            .map(|(decoded, _)| decoded)
+                            .map_err(|e| anyhow!(e))?;
                     events.push((version, event));
                 }
             }
@@ -134,7 +143,10 @@ impl EventStore for SledEventStore {
                     .try_into()
                     .map_err(|_| anyhow!("Invalid key"))?,
             );
-            let event: TwinEvent = bincode::deserialize(&value).map_err(|e| anyhow!(e))?;
+            let event: TwinEvent =
+                bincode::serde::decode_from_slice(&value, bincode::config::standard())
+                    .map(|(decoded, _)| decoded)
+                    .map_err(|e| anyhow!(e))?;
 
             let timestamp = event.timestamp();
             if timestamp >= start && timestamp <= end {
@@ -154,7 +166,8 @@ impl EventStore for SledEventStore {
 impl SnapshotStore for SledEventStore {
     async fn save_snapshot(&self, snapshot: TwinSnapshot) -> Result<()> {
         let key = snapshot.twin_id.0.as_bytes();
-        let encoded = bincode::serialize(&snapshot).map_err(|e| anyhow!(e))?;
+        let encoded = bincode::serde::encode_to_vec(&snapshot, bincode::config::standard())
+            .map_err(|e| anyhow!(e))?;
 
         self.snapshots
             .insert(key, encoded)
@@ -168,7 +181,9 @@ impl SnapshotStore for SledEventStore {
         let key = twin_id.0.as_bytes();
 
         if let Some(data) = self.snapshots.get(key).map_err(|e| anyhow!(e))? {
-            let snapshot = bincode::deserialize(&data).map_err(|e| anyhow!(e))?;
+            let snapshot = bincode::serde::decode_from_slice(&data, bincode::config::standard())
+                .map(|(decoded, _)| decoded)
+                .map_err(|e| anyhow!(e))?;
             Ok(Some(snapshot))
         } else {
             Ok(None)
@@ -181,7 +196,10 @@ impl SnapshotStore for SledEventStore {
 
         for item in &self.snapshots {
             let (key, value) = item.map_err(|e| anyhow!(e))?;
-            let snapshot: TwinSnapshot = bincode::deserialize(&value).map_err(|e| anyhow!(e))?;
+            let snapshot: TwinSnapshot =
+                bincode::serde::decode_from_slice(&value, bincode::config::standard())
+                    .map(|(decoded, _)| decoded)
+                    .map_err(|e| anyhow!(e))?;
 
             if snapshot.timestamp < before {
                 to_remove.push(key);
