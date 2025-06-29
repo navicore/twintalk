@@ -125,6 +125,19 @@ impl Runtime {
         self.load_twin(twin_id).await
     }
 
+    /// Create a hypothetical twin (not persisted)
+    pub async fn create_hypothetical_twin(&self, class_name: &str) -> Result<TwinId> {
+        let mut twin = Twin::new(class_name);
+        twin.state.is_hypothetical = true;
+        twin.state.simulation_time = Some(Utc::now());
+        
+        let id = twin.id();
+        let active = Arc::new(ActiveTwin::new(twin));
+        self.active_twins.insert(id, active);
+        
+        Ok(id)
+    }
+
     /// Load a twin from events/snapshots
     async fn load_twin(&self, twin_id: TwinId) -> Result<Arc<ActiveTwin>> {
         // Try to load from snapshot first
@@ -137,6 +150,8 @@ impl Runtime {
                     parent_id: snapshot.parent_id,
                     created_at: snapshot.timestamp,
                     updated_at: snapshot.timestamp,
+                    is_hypothetical: false,
+                    simulation_time: None,
                 };
                 (Some(state), snapshot.event_version)
             } else {
@@ -201,13 +216,23 @@ impl Runtime {
 
     /// Update twin with telemetry
     pub async fn update_telemetry(&self, twin_id: TwinId, data: Vec<(String, f64)>) -> Result<()> {
-        // Record event first (for durability)
-        let event = TwinEvent::TelemetryReceived {
-            twin_id,
-            data: data.clone(),
-            timestamp: Utc::now(),
+        // Check if twin is hypothetical - if so, skip persistence
+        let is_hypothetical = if let Some(active) = self.active_twins.get(&twin_id) {
+            let twin = active.twin.read().await;
+            twin.is_hypothetical()
+        } else {
+            false
         };
-        self.event_store.append(event).await?;
+
+        // Only persist events for non-hypothetical twins
+        if !is_hypothetical {
+            let event = TwinEvent::TelemetryReceived {
+                twin_id,
+                data: data.clone(),
+                timestamp: Utc::now(),
+            };
+            self.event_store.append(event).await?;
+        }
 
         // Update in-memory twin if active
         if let Some(active) = self.active_twins.get(&twin_id) {

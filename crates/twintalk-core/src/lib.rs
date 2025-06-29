@@ -8,6 +8,7 @@
 
 #![allow(clippy::multiple_crate_versions)]
 
+pub mod adt;
 pub mod event;
 pub mod message;
 pub mod runtime;

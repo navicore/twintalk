@@ -43,11 +43,15 @@ pub struct TwinState {
     pub parent_id: Option<TwinId>, // For prototype chain
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    #[serde(default)]
+    pub is_hypothetical: bool, // Marks clones used for prediction
+    #[serde(default)]
+    pub simulation_time: Option<DateTime<Utc>>, // Virtual time for hypothetical twins
 }
 
 /// Active twin instance with behavior
 pub struct Twin {
-    state: TwinState,
+    pub state: TwinState,
 }
 
 impl Twin {
@@ -62,6 +66,8 @@ impl Twin {
                 parent_id: None,
                 created_at: now,
                 updated_at: now,
+                is_hypothetical: false,
+                simulation_time: None,
             },
         }
     }
@@ -96,6 +102,39 @@ impl Twin {
         new_state.updated_at = new_state.created_at;
 
         Self { state: new_state }
+    }
+
+    /// Clone this twin as hypothetical (for predictions/simulations)
+    #[must_use]
+    pub fn clone_hypothetical(&self) -> Self {
+        let mut new_state = self.state.clone();
+        new_state.id = TwinId::new();
+        new_state.parent_id = Some(self.state.id);
+        new_state.created_at = Utc::now();
+        new_state.updated_at = new_state.created_at;
+        new_state.is_hypothetical = true;
+        new_state.simulation_time = Some(Utc::now());
+
+        Self { state: new_state }
+    }
+
+    /// Check if this twin is hypothetical
+    pub fn is_hypothetical(&self) -> bool {
+        self.state.is_hypothetical
+    }
+
+    /// Get the simulation time for hypothetical twins
+    pub fn simulation_time(&self) -> Option<DateTime<Utc>> {
+        self.state.simulation_time
+    }
+
+    /// Set the simulation time (for hypothetical twins)
+    pub fn set_simulation_time(&mut self, time: DateTime<Utc>) -> Result<()> {
+        if !self.state.is_hypothetical {
+            return Err(anyhow!("Cannot set simulation time on non-hypothetical twin"));
+        }
+        self.state.simulation_time = Some(time);
+        Ok(())
     }
 
     /// Send a message to this twin
