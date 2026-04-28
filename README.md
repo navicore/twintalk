@@ -1,3 +1,8 @@
+<!-- ghmig:moved -->
+> **This repository has moved to [https://git.navicore.tech/navicore/twintalk](https://git.navicore.tech/navicore/twintalk).**
+>
+> The GitHub copy is archived and no longer maintained.
+
 # TwinTalk - Digital Twin Runtime
 
 An experimental digital twin runtime combining Rust performance with Smalltalk expressiveness for prototype-based twin programming.
